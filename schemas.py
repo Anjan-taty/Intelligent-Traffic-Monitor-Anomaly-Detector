@@ -1,23 +1,71 @@
-# This is to define how the data is sent/received by the API's(API shape)
-# Pydantic is a python library which is used for the data validation and serialization
-#->We define the shape of the data in the python class
-#->Pydantic helps to convert the SQLAlchemy objects to the json format
-# SQLAlchemy   → talks to DATABASE
-# Pydantic     → validates and shapes DATA
-from pydantic import BaseModel,ConfigDict
+from datetime import datetime
+from typing import Optional, List, Dict, Any
+from pydantic import BaseModel, ConfigDict, Field
 
-class UserSchema(BaseModel):
+class RequestLogBase(BaseModel):
+    ip_address: str
+    method: str
+    endpoint: str
+    status_code: int
+    response_time_ms: float
+    user_agent: Optional[str] = None
+    is_blocked: bool = False
+
+class RequestLogCreate(RequestLogBase):
+    pass
+
+class RequestLogResponse(RequestLogBase):
     model_config = ConfigDict(from_attributes=True)
-    name: str
-    age: int
+    id: int
+    timestamp: datetime
 
-# Pretend this is a SQLAlchemy object
-class FakeDBObject:
-    name = "Arjun"
-    age = 21
+class AnomalyAlertResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    ip_address: str
+    threat_score: float
+    anomaly_type: str
+    reason: str
+    metrics_snapshot: Optional[str] = None
+    mitigation_status: str
+    timestamp: datetime
 
-obj = FakeDBObject()
+class BlockedIPCreate(BaseModel):
+    ip_address: str
+    reason: str
+    threat_level: str = "HIGH"
+    duration_minutes: Optional[int] = 60
 
-# Try to create a Pydantic model from it
-user = UserSchema.model_validate(obj)
-print(user)
+class BlockedIPResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    ip_address: str
+    reason: str
+    threat_level: str
+    blocked_at: datetime
+    expires_at: Optional[datetime] = None
+    is_active: bool
+
+class SystemStats(BaseModel):
+    total_requests: int
+    total_blocked: int
+    active_threats: int
+    avg_response_time_ms: float
+    p95_response_time_ms: float
+    current_rps: float
+    status_code_distribution: Dict[str, int]
+    top_endpoints: List[Dict[str, Any]]
+    recent_alerts: List[AnomalyAlertResponse]
+
+class SimulationRequest(BaseModel):
+    scenario: str = Field(..., description="human, scraper, ddos, or bruteforce")
+    requests_count: int = Field(default=30, ge=1, le=500)
+    concurrency: int = Field(default=5, ge=1, le=50)
+
+class SimulationResponse(BaseModel):
+    status: str
+    scenario: str
+    total_sent: int
+    successful: int
+    blocked: int
+    duration_seconds: float

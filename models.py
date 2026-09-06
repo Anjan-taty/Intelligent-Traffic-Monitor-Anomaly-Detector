@@ -1,19 +1,51 @@
-# this is to define how data is stored, takes the base model from database and then buils how the model or the table looks like(Database shape)
-
-from sqlalchemy import Integer, String, Float,DateTime
-from datetime import datetime,timezone
-from sqlalchemy.orm import Mapped,mapped_column
+from datetime import datetime, timezone
+from sqlalchemy import Integer, String, Float, DateTime, Boolean, Text
+from sqlalchemy.orm import Mapped, mapped_column
 from database import Base
 
 class RequestLog(Base):
-    __tablename__="request_log"
-    id:Mapped[int]=mapped_column(Integer,primary_key=True)
-    ip_address:Mapped[str]=mapped_column(String(),index=True)      # Here Index=True because we are saying table to maintain a stricture to quickly accesss the ip when asked instead of searching all. SO, this creates a structure for storing them
-    method:Mapped[str]=mapped_column(String(50))
-    endpoint:Mapped[str]=mapped_column(String(50))
-    status_code:Mapped[int]=mapped_column(Integer)
-    response_time_ms:Mapped[float]=mapped_column(Float)
-    timestamp:Mapped[datetime]=mapped_column(DateTime,default=lambda:datetime.now(timezone.utc)) # Here lambda is written beacuse it needs to call this datetime.now for each cell not entirely for once
-    
+    __tablename__ = "request_logs"
 
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    ip_address: Mapped[str] = mapped_column(String(45), index=True, nullable=False)
+    method: Mapped[str] = mapped_column(String(10), nullable=False)
+    endpoint: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
+    status_code: Mapped[int] = mapped_column(Integer, nullable=False)
+    response_time_ms: Mapped[float] = mapped_column(Float, nullable=False)
+    timestamp: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), 
+        default=lambda: datetime.now(timezone.utc),
+        index=True
+    )
+    user_agent: Mapped[str] = mapped_column(String(255), nullable=True)
+    is_blocked: Mapped[bool] = mapped_column(Boolean, default=False)
 
+class AnomalyAlert(Base):
+    __tablename__ = "anomaly_alerts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    ip_address: Mapped[str] = mapped_column(String(45), index=True, nullable=False)
+    threat_score: Mapped[float] = mapped_column(Float, nullable=False)
+    anomaly_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    metrics_snapshot: Mapped[str] = mapped_column(Text, nullable=True)  # JSON formatted metrics
+    mitigation_status: Mapped[str] = mapped_column(String(50), default="Flagged")
+    timestamp: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        index=True
+    )
+
+class BlockedIP(Base):
+    __tablename__ = "blocked_ips"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    ip_address: Mapped[str] = mapped_column(String(45), unique=True, index=True, nullable=False)
+    reason: Mapped[str] = mapped_column(String(255), nullable=False)
+    threat_level: Mapped[str] = mapped_column(String(50), default="HIGH")
+    blocked_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc)
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)

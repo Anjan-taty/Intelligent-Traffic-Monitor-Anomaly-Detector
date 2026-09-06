@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AegisGuard | Intelligent Traffic Monitor & Anomaly Detector</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="cyber-grid-bg"></div>
+
+    <header class="top-nav">
+        <div class="brand-section">
+            <div class="brand-logo">
+                <span class="shield-icon">🛡️</span>
+            </div>
+            <div class="brand-text">
+                <h1>AegisGuard <span class="badge-tag">Enterprise SOC</span></h1>
+                <p>Self-Defending Reverse Gateway & Behavioral Telemetry</p>
+            </div>
+        </div>
+
+        <div class="status-cluster">
+            <div class="status-indicator">
+                <span class="pulse-dot" id="ws-pulse"></span>
+                <span id="ws-status-text">Telemetry Stream: Connected</span>
+            </div>
+            <div class="system-time" id="live-clock">--:--:-- UTC</div>
+        </div>
+    </header>
+
+    <main class="dashboard-container">
+        <!-- Top KPI Metric Cards -->
+        <section class="kpi-grid">
+            <div class="kpi-card glass-panel" id="card-total-reqs">
+                <div class="kpi-header">
+                    <span class="kpi-title">Total Requests</span>
+                    <span class="kpi-icon">📊</span>
+                </div>
+                <div class="kpi-value" id="val-total-reqs">0</div>
+                <div class="kpi-subtext"><span class="trend-up" id="val-current-rps">0.0</span> req / sec</div>
+            </div>
+
+            <div class="kpi-card glass-panel alert-card" id="card-blocked-reqs">
+                <div class="kpi-header">
+                    <span class="kpi-title">Mitigated Attacks</span>
+                    <span class="kpi-icon">🚫</span>
+                </div>
+                <div class="kpi-value alert-text" id="val-blocked-reqs">0</div>
+                <div class="kpi-subtext" id="val-block-rate">0.0% Block Rate</div>
+            </div>
+
+            <div class="kpi-card glass-panel warning-card" id="card-threats">
+                <div class="kpi-header">
+                    <span class="kpi-title">Active Anomalies</span>
+                    <span class="kpi-icon">🧠</span>
+                </div>
+                <div class="kpi-value warning-text" id="val-active-threats">0</div>
+                <div class="kpi-subtext">Isolation Forest Flagged</div>
+            </div>
+
+            <div class="kpi-card glass-panel" id="card-latency">
+                <div class="kpi-header">
+                    <span class="kpi-title">P95 Gateway Latency</span>
+                    <span class="kpi-icon">⚡</span>
+                </div>
+                <div class="kpi-value" id="val-p95-latency">0.0 ms</div>
+                <div class="kpi-subtext">Avg: <span id="val-avg-latency">0.0 ms</span> (Zero-blocking)</div>
+            </div>
+        </section>
+
+        <!-- Simulation Control Deck -->
+        <section class="control-deck glass-panel">
+            <div class="deck-header">
+                <div class="deck-title-wrap">
+                    <h2>🎯 Interactive Attack Vector Simulator</h2>
+                    <p>Trigger realistic traffic patterns to demonstrate real-time defense, rate limiting, and ML anomaly classification.</p>
+                </div>
+                <div id="sim-status" class="sim-status-idle">Simulator Idle</div>
+            </div>
+            <div class="sim-buttons-grid">
+                <button class="sim-btn btn-human" id="btn-sim-human" onclick="triggerSimulation('human')">
+                    <span class="btn-icon">👤</span>
+                    <div class="btn-details">
+                        <strong>Legitimate Human Traffic</strong>
+                        <small>Natural pauses, low entropy, 200 OK</small>
+                    </div>
+                </button>
+
+                <button class="sim-btn btn-scraper" id="btn-sim-scraper" onclick="triggerSimulation('scraper')">
+                    <span class="btn-icon">🕷️</span>
+                    <div class="btn-details">
+                        <strong>Catalog Web Scraper</strong>
+                        <small>Sub-20ms cadence, high route entropy</small>
+                    </div>
+                </button>
+
+                <button class="sim-btn btn-ddos" id="btn-sim-ddos" onclick="triggerSimulation('ddos')">
+                    <span class="btn-icon">⚡</span>
+                    <div class="btn-details">
+                        <strong>Volumetric L7 DDoS</strong>
+                        <small>Concurrent burst, triggers Redis 429</small>
+                    </div>
+                </button>
+
+                <button class="sim-btn btn-brute" id="btn-sim-brute" onclick="triggerSimulation('bruteforce')">
+                    <span class="btn-icon">🔐</span>
+                    <div class="btn-details">
+                        <strong>Credential Brute-Force</strong>
+                        <small>POST /login spikes, 401 error clustering</small>
+                    </div>
+                </button>
+            </div>
+        </section>
+
+        <!-- Charts Grid -->
+        <section class="charts-grid">
+            <div class="chart-card glass-panel">
+                <div class="chart-header">
+                    <h3>📈 Real-time Traffic Throughput (RPS)</h3>
+                    <span class="live-pill">LIVE</span>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="rpsChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-card glass-panel">
+                <div class="chart-header">
+                    <h3>🎯 Gateway Response Status Distribution</h3>
+                    <span class="status-legend">HTTP Codes</span>
+                </div>
+                <div class="chart-wrapper donut-wrapper">
+                    <canvas id="statusChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Threat Intelligence & Anomaly Alerts Section -->
+        <section class="intel-grid">
+            <div class="threats-panel glass-panel">
+                <div class="panel-header">
+                    <div class="header-left">
+                        <h3>🚨 Explainable Anomaly Detection Stream (XAI)</h3>
+                        <span class="ai-badge">Isolation Forest + Behavioral Analysis</span>
+                    </div>
+                    <button class="action-btn" onclick="fetchAlerts()">Refresh Alerts</button>
+                </div>
+                <div class="table-container">
+                    <table class="cyber-table" id="alerts-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Source IP</th>
+                                <th>Threat Score</th>
+                                <th>Classification</th>
+                                <th>Root-Cause Explanation (XAI)</th>
+                                <th>Mitigation Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="alerts-body">
+                            <tr class="empty-row">
+                                <td colspan="6">No security anomalies detected yet. Launch a simulation above to test!</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Live Intercepted Request Log -->
+        <section class="log-grid">
+            <div class="log-panel glass-panel">
+                <div class="panel-header">
+                    <div class="header-left">
+                        <h3>📋 Real-Time Ingested Request Telemetry</h3>
+                        <span class="count-pill" id="log-count">0 items</span>
+                    </div>
+                    <button class="action-btn" onclick="fetchLogs()">Refresh Logs</button>
+                </div>
+                <div class="table-container">
+                    <table class="cyber-table" id="logs-table">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Client IP</th>
+                                <th>Method</th>
+                                <th>Endpoint</th>
+                                <th>Status</th>
+                                <th>Latency</th>
+                                <th>User Agent</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logs-body">
+                            <tr class="empty-row">
+                                <td colspan="7">Awaiting traffic ingestion...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer-bar">
+        <p>AegisGuard Enterprise Security Architecture &bull; Built with FastAPI, Redis, SQLAlchemy & Scikit-Learn &bull; IBM Placement Portfolio Edition</p>
+    </footer>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
